@@ -1,0 +1,9 @@
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\install_programs.ipynb"
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\indicators.ipynb"
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\all_kline_changes.ipynb"
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\create_df.ipynb"
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\Save_and_Load.ipynb"
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\graphs_and_tables.ipynb"
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\modules\results_functions.ipynb"
+
+jupytext --set-formats ipynb,py "C:\Users\nikita\Documents\MagisterML\MyJupiter\trading_project\trading_model_prepare.ipynb"
