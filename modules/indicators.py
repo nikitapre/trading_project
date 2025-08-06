@@ -1687,50 +1687,71 @@ def different_MA(df, price_col='Close', eps=1e-8):
 # %%
 def different_EMA(df, price_col='Close', eps=1e-8):
     price = df[price_col]
-    max_price = price.max()
 
-    # EMA (по цене)
-    ema5 = ta.ema(price, 5)
-    ema20 = ta.ema(price, 20)
-    ema50 = ta.ema(price, 50)
-    ema100 = ta.ema(price, 100)
-    ema200 = ta.ema(price, 200)
+    # Нормализованная цена для каждого окна
+    price_norm = price / price.rolling(60).mean()
 
-    # Нормализованные EMA
-    ema20_norm = (ema20 - ema5)/ ema20
-    ema50_norm = (ema50 - ema5)/ ema50
-    ema100_norm = (ema100 - ema5)/ ema100
-    ema200_norm = (ema200 - ema5)/ ema200
+    # EMA по нормализованной цене
+    ema9 = ta.ema(price_norm, 9)
+    ema20 = ta.ema(price_norm, 20)
+    ema50 = ta.ema(price_norm, 50)
+    ema100 = ta.ema(price_norm, 100)
+    ema200 = ta.ema(price_norm, 200)
 
-    # Углы наклона EMA (в радианах, нормализованные через π)
+    # Углы наклона EMA
     slope_ema20 = np.arctan(ema20.diff(5)) / np.pi
     slope_ema50 = np.arctan(ema50.diff(5)) / np.pi
     slope_ema100 = np.arctan(ema100.diff(5)) / np.pi
     slope_ema200 = np.arctan(ema200.diff(5)) / np.pi
 
-    # Разности между EMA (уже нормализованы)
-    ema20_ema50_diff = ema20_norm - ema50_norm
-    ema50_ema100_diff = ema50_norm - ema100_norm
-    ema100_ema200_diff = ema100_norm - ema200_norm
+    # Изменения EMA
+    ema20_diff = ema20.diff(10)
+    ema50_diff = ema50.diff(25)
+    ema100_diff = ema100.diff(50)
+    ema200_diff = ema200.diff(100)
 
-    # Средняя цена за последние 5 свеч (среднее арифметическое Open, High, Low, Close)
-    mean_price_5 = df[['Open', 'High', 'Low', 'Close']].mean(axis=1).rolling(5).mean()
+    # Разности между EMA
+    ema20_ema50_diff = ema20 - ema50
+    ema50_ema100_diff = ema50 - ema100
+    ema100_ema200_diff = ema100 - ema200
 
-    return pd.DataFrame({
-        'ema20_norm': ema20_norm,
-        'ema50_norm': ema50_norm,
-        'ema100_norm': ema100_norm,
-        'ema200_norm': ema200_norm,
+    # Цена выше EMA (используем обычную цену и обычные EMA)
+    df['price_above_ema20'] = (price > ta.ema(price, 20)).astype(int)
+    df['price_above_ema50'] = (price > ta.ema(price, 50)).astype(int)
+    df['price_above_ema100'] = (price > ta.ema(price, 100)).astype(int)
+    df['price_above_ema200'] = (price > ta.ema(price, 200)).astype(int)
 
-        'ema20_slope': slope_ema20,
-        'ema50_slope': slope_ema50,
-        'ema100_slope': slope_ema100,
-        'ema200_slope': slope_ema200,
+    # Кроссы
+    def crossed(series1, series2, window=5):
+        cross = ((series1 > series2) != (series1.shift(1) > series2.shift(1))).astype(int)
+        return cross.rolling(window).max().fillna(0).astype(int)
 
-        'ema20_ema50_diff': ema20_ema50_diff,
-        'ema50_ema100_diff': ema50_ema100_diff,
-        'ema100_ema200_diff': ema100_ema200_diff,
-    })
+    df['ema9_crossed_ema20_last5'] = crossed(ta.ema(price, 9), ta.ema(price, 20))
+    df['ema20_crossed_ema50_last5'] = crossed(ta.ema(price, 20), ta.ema(price, 50))
+    df['ema50_crossed_ema100_last5'] = crossed(ta.ema(price, 50), ta.ema(price, 100))
+    df['ema100_crossed_ema200_last5'] = crossed(ta.ema(price, 100), ta.ema(price, 200))
+
+    # Добавляем EMA-признаки
+    df['ema20_norm'] = ema20
+    df['ema50_norm'] = ema50
+    df['ema100_norm'] = ema100
+    df['ema200_norm'] = ema200
+
+    df['ema20_slope'] = slope_ema20
+    df['ema50_slope'] = slope_ema50
+    df['ema100_slope'] = slope_ema100
+    df['ema200_slope'] = slope_ema200
+
+    df['ema20_ema50_diff'] = ema20_ema50_diff
+    df['ema50_ema100_diff'] = ema50_ema100_diff
+    df['ema100_ema200_diff'] = ema100_ema200_diff
+
+    df['ema20_diff'] = ema20_diff
+    df['ema50_diff'] = ema50_diff
+    df['ema100_diff'] = ema100_diff
+    df['ema200_diff'] = ema200_diff
+
+    return df
 
 
 # %% [markdown]

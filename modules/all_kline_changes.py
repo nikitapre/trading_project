@@ -115,6 +115,76 @@ def add_target_column_mod(
 
 
 # %% [markdown]
+# ### Целевая переменная с условием EMA
+
+# %%
+def add_target_column_mod_sma_stochrsi_volume_surge(
+    df,
+    target_candles=20,
+    target=0.04,
+    rr_threshold=2.0,
+    sma_length=100,
+    rsi_length=14,
+    stoch_length=14,
+    stoch_k_smooth=3,
+    stoch_trashold=40,
+    short_vol_window=5,
+    long_vol_window=20
+):
+    close = df['Close'].values
+    high = df['High'].values
+    low = df['Low'].values
+    volume = df['Volume'].values
+
+    sma = ta.sma(df['Close'], length=sma_length).values
+
+    stoch_rsi = ta.stochrsi(df['Close'], length=stoch_length, rsi_length=rsi_length, k=stoch_k_smooth, d=3)
+    k_column = stoch_rsi.columns[0]
+    stoch_rsi_k = stoch_rsi[k_column].values
+
+    # Фильтр по среднему объёму: рост активности
+    avg_vol_short = df['Volume'].rolling(window=short_vol_window).mean().values
+    avg_vol_long = df['Volume'].rolling(window=long_vol_window).mean().values
+
+    y = np.zeros(len(df), dtype=int)
+    sl_pct = target / rr_threshold
+
+    for i in range(len(df)):
+        if (
+            np.isnan(sma[i]) or close[i] <= sma[i] or
+            np.isnan(stoch_rsi_k[i]) or stoch_rsi_k[i] >= stoch_trashold or
+            np.isnan(avg_vol_short[i]) or np.isnan(avg_vol_long[i]) or
+            avg_vol_short[i] <= avg_vol_long[i]
+        ):
+            continue
+
+        entry_price = close[i]
+        tp_price = entry_price * (1 + target)
+        sl_price = entry_price * (1 - sl_pct)
+
+        window_end = min(i + target_candles + 1, len(df))
+        tp_hit_first = False
+
+        for j in range(i + 1, window_end):
+            hit_sl = low[j] <= sl_price
+            hit_tp = high[j] >= tp_price
+
+            if hit_sl and hit_tp:
+                break
+            elif hit_sl:
+                break
+            elif hit_tp:
+                tp_hit_first = True
+                break
+
+        if tp_hit_first:
+            y[i] = 1
+
+    df['target'] = y
+    return df
+
+
+# %% [markdown]
 # ### Добавление основных индикаторов
 
 # %%
@@ -125,14 +195,13 @@ def apply_main_indicators(df, length=20, eps=1e-8):
     try:
         
         df['RSI21'] = ta.rsi(df['Close'], length=21) / 100
+        df['RSI21_diff'] = df['RSI21'].diff(5)
         df['RSI_50_21_diff'] = (ta.rsi(df['Close'], length=50) / 100) - df['RSI21']
         
-        deviations = different_EMA(df)
-        # Объединяем с исходным DataFrame (по индексу)
-        df = pd.concat([df, deviations], axis=1)
-        df = add_vwap_features_with_norm(df)
-        df = VWAP(df)
-        df['dump_return_15'] = ta.ema(df['Close'], 9).pct_change(periods=15) / 100
+        df = different_EMA(df)
+        # df = add_vwap_features_with_norm(df)
+        # df = VWAP(df)
+        # df['dump_return_15'] = ta.ema(df['Close'], 9).pct_change(periods=15) / 100
         df['fib_dist_050_last50'] = fib_dist_050_last50(df)
         
         return df
@@ -153,6 +222,7 @@ def apply_add_indicators(df, length=20, eps=1e-8):
         print(f'Начальное количество NaN в df: {df.isna().sum().sum()}')
         t0 = time.time()
         df = add_atr_normalized(df, windows=[24], normalization_window=200)
+        df = volume_base_indicators(df)
         print(f"⏱️ resistance_slope_dist_200: {time.time() - t0:.2f} сек")
 
         
